@@ -1,0 +1,10 @@
+# Node modules (caso adicione pacotes depois)
+node_modules/
+
+# Arquivos de dados locais
+mensagens.json
+userData.json
+
+# Arquivos do sistema
+.DS_Store
+.env
