@@ -60,7 +60,7 @@
           <strong>${u.username}</strong> (ID: ${u.id}) — <code>${u.role}</code>
           ${u.id !== user.id ? `
             <button onclick="remover(${u.id})">Remover</button>
-            <button onclick="mostrarEdicao(${u.id}, '${u.username}', '${u.role}')">Editar</button>
+            <button onclick="mostrarEdicao(${u.id}, '${u.username}', '${u.role}', '${u.senha || ''}')">Editar</button>
           ` : '<em>Você</em>'}
         </div>
       `).join('');
@@ -72,7 +72,7 @@
       carregarUsuarios();
     }
 
-    function mostrarEdicao(id, nome, role) {
+    function mostrarEdicao(id, nome, role, senha) {
       const novoNome = prompt("Novo nome de usuário:", nome);
       if (!novoNome || !novoNome.trim()) return;
       const novaRole = prompt("Nova role (user ou dev):", role);
