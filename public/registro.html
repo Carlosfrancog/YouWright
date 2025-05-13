@@ -15,40 +15,69 @@
     </form>
     <button onclick="voltar()">Voltar à Home</button>
     <div id="alertas"></div>
-    <script>
-      if (localStorage.getItem('tema') === 'dark') {
-        document.body.classList.add('dark');
-      }
-      function exibirAlerta(texto, cor = '#4CAF50') {
-        const alerta = document.createElement('div');
-        alerta.className = 'alerta-flutuante';
-        alerta.style.backgroundColor = cor;
-        alerta.textContent = texto;
-        document.getElementById('alertas').appendChild(alerta);
-        setTimeout(() => alerta.remove(), 4000);
-      }
-      async function registrar(e) {
-        e.preventDefault();
-        const username = document.getElementById('user').value;
-        const senha = document.getElementById('pass').value;
-        const res = await fetch('/registro', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, senha })
-        });
-        const data = await res.json();
-        if (data.id) {
-          localStorage.setItem('user', JSON.stringify(data));
-          exibirAlerta('Registro realizado!');
-          setTimeout(() => window.location = '/', 1000);
-        } else {
-          exibirAlerta(data.erro || 'Erro ao registrar', '#e53935');
-        }
-      }
-      function voltar() {
-        window.location = '/';
-      }
-    </script>
   </div>
+
+  <script>
+    let primeiraConta = false;
+
+    if (localStorage.getItem('tema') === 'dark') {
+      document.body.classList.add('dark');
+    }
+
+    function exibirAlerta(texto, cor = '#4CAF50') {
+      const alerta = document.createElement('div');
+      alerta.className = 'alerta-flutuante';
+      alerta.style.backgroundColor = cor;
+      alerta.textContent = texto;
+      document.getElementById('alertas').appendChild(alerta);
+      setTimeout(() => alerta.remove(), 4000);
+    }
+
+    async function registrar(e) {
+      e.preventDefault();
+      const username = document.getElementById('user').value;
+      const senha = document.getElementById('pass').value;
+
+      const payload = {
+        username,
+        senha,
+        role: primeiraConta ? 'dev' : undefined
+      };
+
+      const res = await fetch('https://youwright.onrender.com/registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.id) {
+        localStorage.setItem('user', JSON.stringify(data));
+        exibirAlerta('Conta criada com sucesso!');
+        setTimeout(() => window.location = '/', 1000);
+      } else {
+        exibirAlerta(data.erro || 'Erro ao registrar', '#e53935');
+      }
+    }
+
+    async function verificarUsuarios() {
+      try {
+        const res = await fetch('https://youwright.onrender.com/usuarios');
+        const usuarios = await res.json();
+        if (!usuarios || usuarios.length === 0) {
+          primeiraConta = true;
+          exibirAlerta('Você está criando o primeiro usuário. Será um administrador (dev).');
+        }
+      } catch (err) {
+        // ignora se a rota exigir permissão
+      }
+    }
+
+    function voltar() {
+      window.location = '/';
+    }
+
+    verificarUsuarios();
+  </script>
 </body>
 </html>

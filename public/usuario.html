@@ -18,7 +18,7 @@
       if (!user) location.href = '/login.html';
 
       async function carregar() {
-        const res = await fetch('/mensagens/' + user.id);
+        const res = await fetch('https://youwright.onrender.com/mensagens/' + user.id);
         const msgs = await res.json();
         document.getElementById('lista').innerHTML = msgs.reverse().map(
           m => `<div class="msg">
