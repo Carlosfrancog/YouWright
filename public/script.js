@@ -23,7 +23,7 @@ async function enviar() {
   const body = { texto };
   if (user) body.userId = user.id;
 
-  await fetch('/mensagem', {
+  await fetch('https://youwright.onrender.com/mensagem', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
