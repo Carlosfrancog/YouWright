@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const serviceAccount = require('./token.json'); // Substitua pelo nome real
+const serviceAccount = require('/etc/secrets/chave-firebase.json'); // Substitua pelo nome real
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
