@@ -77,7 +77,7 @@
       if (!novoNome || !novoNome.trim()) return;
       const novaRole = prompt("Nova role (user ou dev):", role);
       if (!["user", "dev"].includes(novaRole)) return alert("Role inválida.");
-      const novaSenha = prompt("Nova senha:");
+      const novaSenha = prompt("Nova senha:", senha);
       if (!novaSenha || !novaSenha.trim()) return;
 
       fetch('/editar-usuario', {
