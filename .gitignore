@@ -4,6 +4,12 @@ node_modules/
 # Arquivos de dados locais
 mensagens.json
 userData.json
+usuarios.json
+token.json
+
+#Arquivos de configuração
+localServer.json
+
 
 # Arquivos do sistema
 .DS_Store

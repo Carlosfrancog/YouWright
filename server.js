@@ -1,141 +1,136 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const admin = require('firebase-admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const DATA_FILE = path.join(__dirname, 'mensagens.json');
-const USERS_FILE = path.join(__dirname, 'usuarios.json');
+const serviceAccount = require('./token.json'); // Substitua pelo nome real
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://youwright-7eb4c-default-rtdb.firebaseio.com/" // Substitua pela URL do seu projeto
+});
+
+const db = admin.database();
 
 app.use(express.json());
 app.use(express.static('public'));
 
-function carregarJSON(caminho) {
-  try {
-    return JSON.parse(fs.readFileSync(caminho, 'utf8'));
-  } catch {
-    return [];
-  }
-}
-
-function salvarJSON(caminho, dados) {
-  fs.writeFileSync(caminho, JSON.stringify(dados, null, 2));
-}
-
 // Registro de usuário comum
-app.post('/registro', (req, res) => {
+app.post('/registro', async (req, res) => {
   const { username, senha } = req.body;
   if (!username || !senha) return res.status(400).send({ erro: 'Usuário e senha são obrigatórios.' });
 
-  const usuarios = carregarJSON(USERS_FILE);
-  if (usuarios.find(u => u.username === username))
-    return res.status(409).send({ erro: 'Usuário já existe.' });
+  const usuariosRef = db.ref('usuarios');
+  const snapshot = await usuariosRef.once('value');
+  const usuarios = snapshot.val() || {};
+
+  const jaExiste = Object.values(usuarios).find(u => u.username === username);
+  if (jaExiste) return res.status(409).send({ erro: 'Usuário já existe.' });
 
   const id = Date.now();
-  usuarios.push({ id, username, senha, role: 'user' });
-  salvarJSON(USERS_FILE, usuarios);
-
+  await usuariosRef.child(id).set({ id, username, senha, role: 'user' });
   res.status(201).send({ id, username });
 });
 
 // Login
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { username, senha } = req.body;
-  const usuarios = carregarJSON(USERS_FILE);
-  const user = usuarios.find(u => u.username === username && u.senha === senha);
+  const usuariosRef = db.ref('usuarios');
+  const snapshot = await usuariosRef.once('value');
+  const usuarios = snapshot.val() || {};
+  const user = Object.values(usuarios).find(u => u.username === username && u.senha === senha);
   if (!user) return res.status(401).send({ erro: 'Credenciais inválidas.' });
-
   res.send({ id: user.id, username: user.username, role: user.role });
 });
 
 // Postagem de mensagem
-app.post('/mensagem', (req, res) => {
+app.post('/mensagem', async (req, res) => {
   const { texto, userId } = req.body;
   if (!texto || texto.trim() === '') return res.status(400).send({ erro: 'Mensagem vazia.' });
 
-  const mensagens = carregarJSON(DATA_FILE);
+  const mensagensRef = db.ref('mensagens');
   const nova = {
     id: Date.now(),
     texto: texto.slice(0, 280),
     data: new Date().toISOString(),
     userId: userId || null
   };
-  mensagens.push(nova);
-  salvarJSON(DATA_FILE, mensagens);
-
+  await mensagensRef.child(nova.id).set(nova);
   res.status(201).send(nova);
 });
 
 // Listar todas mensagens
-app.get('/mensagens', (req, res) => {
-  const mensagens = carregarJSON(DATA_FILE);
-  res.send(mensagens);
+app.get('/mensagens', async (req, res) => {
+  const snapshot = await db.ref('mensagens').once('value');
+  const mensagens = snapshot.val() || {};
+  res.send(Object.values(mensagens));
 });
 
-// Listar mensagens de um usuário específico
-app.get('/mensagens/:userId', (req, res) => {
-  const mensagens = carregarJSON(DATA_FILE);
-  const filtradas = mensagens.filter(m => m.userId == req.params.userId);
+// Listar mensagens por usuário
+app.get('/mensagens/:userId', async (req, res) => {
+  const snapshot = await db.ref('mensagens').once('value');
+  const mensagens = snapshot.val() || {};
+  const filtradas = Object.values(mensagens).filter(m => m.userId == req.params.userId);
   res.send(filtradas);
 });
 
 // Listar usuários (apenas dev)
-app.get('/usuarios', (req, res) => {
+app.get('/usuarios', async (req, res) => {
   const { id, role } = req.query;
-  const usuarios = carregarJSON(USERS_FILE);
-  const solicitante = usuarios.find(u => u.id == id && u.role === 'dev');
+  const snapshot = await db.ref('usuarios').once('value');
+  const usuarios = snapshot.val() || {};
+  const solicitante = Object.values(usuarios).find(u => u.id == id && u.role === 'dev');
   if (!solicitante) return res.status(403).send({ erro: 'Acesso negado' });
-  res.send(usuarios);
+  res.send(Object.values(usuarios));
 });
 
-// Criar novo usuário (apenas dev)
-app.post('/criar-usuario', (req, res) => {
+// Criar usuário (apenas dev)
+app.post('/criar-usuario', async (req, res) => {
   const { masterId, username, senha, role } = req.body;
-  const usuarios = carregarJSON(USERS_FILE);
-  const master = usuarios.find(u => u.id === masterId && u.role === 'dev');
+  const ref = db.ref('usuarios');
+  const snapshot = await ref.once('value');
+  const usuarios = snapshot.val() || {};
+  const master = Object.values(usuarios).find(u => u.id === masterId && u.role === 'dev');
   if (!master) return res.status(403).send({ erro: 'Apenas devs podem criar usuários.' });
 
-  if (usuarios.find(u => u.username === username)) {
+  if (Object.values(usuarios).find(u => u.username === username)) {
     return res.status(409).send({ erro: 'Usuário já existe.' });
   }
 
   const novo = { id: Date.now(), username, senha, role: role || 'user' };
-  usuarios.push(novo);
-  salvarJSON(USERS_FILE, usuarios);
+  await ref.child(novo.id).set(novo);
   res.status(201).send(novo);
 });
 
 // Editar usuário (apenas dev)
-app.put('/editar-usuario', (req, res) => {
+app.put('/editar-usuario', async (req, res) => {
   const { masterId, id, username, role } = req.body;
-  let usuarios = carregarJSON(USERS_FILE);
-  const master = usuarios.find(u => u.id == masterId && u.role === 'dev');
+  const ref = db.ref('usuarios');
+  const snapshot = await ref.once('value');
+  const usuarios = snapshot.val() || {};
+  const master = Object.values(usuarios).find(u => u.id == masterId && u.role === 'dev');
   if (!master) return res.status(403).send({ erro: 'Apenas devs podem editar usuários.' });
 
-  usuarios = usuarios.map(u => {
-    if (u.id == id) {
-      return { ...u, username, role };
-    }
-    return u;
-  });
-
-  salvarJSON(USERS_FILE, usuarios);
+  if (!usuarios[id]) return res.status(404).send({ erro: 'Usuário não encontrado.' });
+  usuarios[id].username = username;
+  usuarios[id].role = role;
+  await ref.child(id).set(usuarios[id]);
   res.send({ status: 'Usuário atualizado' });
 });
 
-// Deletar usuário (apenas dev)
-app.delete('/usuario/:id', (req, res) => {
+// Remover usuário (apenas dev)
+app.delete('/usuario/:id', async (req, res) => {
   const { masterId } = req.query;
-  const usuarios = carregarJSON(USERS_FILE);
-  const master = usuarios.find(u => u.id == masterId && u.role === 'dev');
+  const ref = db.ref('usuarios');
+  const snapshot = await ref.once('value');
+  const usuarios = snapshot.val() || {};
+  const master = Object.values(usuarios).find(u => u.id == masterId && u.role === 'dev');
   if (!master) return res.status(403).send({ erro: 'Apenas devs podem apagar usuários.' });
 
-  const novos = usuarios.filter(u => u.id != req.params.id);
-  salvarJSON(USERS_FILE, novos);
+  await ref.child(req.params.id).remove();
   res.send({ status: 'Usuário removido' });
 });
 
-// Iniciar o servidor
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
 });
