@@ -77,11 +77,13 @@
       if (!novoNome || !novoNome.trim()) return;
       const novaRole = prompt("Nova role (user ou dev):", role);
       if (!["user", "dev"].includes(novaRole)) return alert("Role inválida.");
+      const novaSenha = prompt("Nova senha:");
+      if (!novaSenha || !novaSenha.trim()) return;
 
       fetch('/editar-usuario', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ masterId: user.id, id, username: novoNome.trim(), role: novaRole })
+        body: JSON.stringify({ masterId: user.id, id, username: novoNome.trim(), role: novaRole, senha: novaSenha })
       }).then(res => res.json())
         .then(() => carregarUsuarios());
     }
