@@ -1,7 +1,7 @@
 let user = null;
 
 async function carregarMensagens() {
-  const res = await fetch('/mensagens');
+  const res = await fetch('https://youwright.onrender.com/mensagens');
   const msgs = await res.json();
   const container = document.getElementById('mensagens');
   container.innerHTML = '';
