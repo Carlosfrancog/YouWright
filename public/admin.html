@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel Admin</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>⚙️ Painel de Administração</h1>
+  <div id="painel" style="display:none;">
+    <form onsubmit="criarUsuario(event)">
+      <input id="novoUser" placeholder="Novo usuário" required>
+      <input id="novaSenha" type="password" placeholder="Senha" required>
+      <select id="novaRole">
+        <option value="user">User</option>
+        <option value="dev">Dev</option>
+      </select>
+      <button type="submit">Criar Usuário</button>
+    </form>
+
+    <h2>Usuários Cadastrados</h2>
+    <div id="usuarios"></div>
+  </div>
+  <div id="erro"></div>
+  <button onclick="voltar()">Voltar à Home</button>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'dev') {
+      document.getElementById('erro').innerHTML = '<p style="color:red;">Acesso negado. Apenas usuários DEV.</p>';
+    } else {
+      document.getElementById('painel').style.display = 'block';
+      carregarUsuarios();
+    }
+
+    async function criarUsuario(e) {
+      e.preventDefault();
+      const username = document.getElementById('novoUser').value;
+      const senha = document.getElementById('novaSenha').value;
+      const role = document.getElementById('novaRole').value;
+
+      const res = await fetch('/criar-usuario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterId: user.id, username, senha, role })
+      });
+      const data = await res.json();
+      if (data.erro) return alert(data.erro);
+      alert('Usuário criado com sucesso!');
+      document.querySelector('form').reset();
+      carregarUsuarios();
+    }
+
+    async function carregarUsuarios() {
+      const res = await fetch(`/usuarios?id=${user.id}&role=${user.role}`);
+      const lista = await res.json();
+      const container = document.getElementById('usuarios');
+      container.innerHTML = lista.map(u => `
+        <div class="msg">
+          <strong>${u.username}</strong> (ID: ${u.id}) — <code>${u.role}</code>
+          ${u.id !== user.id ? `
+            <button onclick="remover(${u.id})">Remover</button>
+            <button onclick="mostrarEdicao(${u.id}, '${u.username}', '${u.role}')">Editar</button>
+          ` : '<em>Você</em>'}
+        </div>
+      `).join('');
+    }
+
+    async function remover(id) {
+      if (!confirm('Tem certeza que deseja remover este usuário?')) return;
+      await fetch('/usuario/' + id + `?masterId=${user.id}`, { method: 'DELETE' });
+      carregarUsuarios();
+    }
+
+    function mostrarEdicao(id, nome, role) {
+      const novoNome = prompt("Novo nome de usuário:", nome);
+      if (!novoNome || !novoNome.trim()) return;
+      const novaRole = prompt("Nova role (user ou dev):", role);
+      if (!["user", "dev"].includes(novaRole)) return alert("Role inválida.");
+
+      fetch('/editar-usuario', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterId: user.id, id, username: novoNome.trim(), role: novaRole })
+      }).then(res => res.json())
+        .then(() => carregarUsuarios());
+    }
+
+    function voltar() {
+      window.location = '/';
+    }
+  </script>
+</body>
+</html>

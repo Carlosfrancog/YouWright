@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>📁 Minhas Mensagens</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>📁 Minhas Mensagens</h1>
+    <div id="lista"></div>
+    <button onclick="voltar()">Voltar à Home</button>
+    <script>
+      if (localStorage.getItem('tema') === 'dark') {
+        document.body.classList.add('dark');
+      }
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user) location.href = '/login.html';
+
+      async function carregar() {
+        const res = await fetch('/mensagens/' + user.id);
+        const msgs = await res.json();
+        document.getElementById('lista').innerHTML = msgs.reverse().map(
+          m => `<div class="msg">
+                  <time>${new Date(m.data).toLocaleString()}</time>
+                  <p>${m.texto}</p>
+                </div>`
+        ).join('');
+      }
+
+      function voltar() {
+        window.location = '/';
+      }
+
+      carregar();
+    </script>
+  </div>
+</body>
+</html>

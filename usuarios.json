@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "username": "Dev",
+    "senha": "@Dev#2025Dev",
+    "role": "dev"
+  },
+  {
+    "id": 1747157726080,
+    "username": "Teste User test",
+    "senha": "user123",
+    "role": "user"
+  },
+  {
+    "id": 1747158096347,
+    "username": "User",
+    "senha": "Communuser321@",
+    "role": "user"
+  }
+]
