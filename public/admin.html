@@ -21,6 +21,8 @@
 
     <h2>Usuários Cadastrados</h2>
     <div id="usuarios"></div>
+    <h2>Mensagens Enviadas</h2>
+    <div id="mensagens"></div>
   </div>
   <div id="erro"></div>
   <button onclick="voltar()">Voltar à Home</button>
@@ -32,6 +34,7 @@
     } else {
       document.getElementById('painel').style.display = 'block';
       carregarUsuarios();
+      carregarMensagens();
     }
 
     async function criarUsuario(e) {

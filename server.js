@@ -131,6 +131,23 @@ app.delete('/usuario/:id', async (req, res) => {
   res.send({ status: 'Usuário removido' });
 });
 
+// Apagar uma mensagem (apenas dev)
+app.delete('/mensagem/:id', async (req, res) => {
+  const { masterId } = req.query;
+
+  const usuariosRef = db.ref('usuarios');
+  const snapshotUsuarios = await usuariosRef.once('value');
+  const usuarios = snapshotUsuarios.val() || {};
+  const master = Object.values(usuarios).find(u => u.id == masterId && u.role === 'dev');
+  if (!master) return res.status(403).send({ erro: 'Apenas devs podem apagar mensagens.' });
+
+  const mensagensRef = db.ref('mensagens');
+  await mensagensRef.child(req.params.id).remove();
+
+  res.send({ status: 'Mensagem removida' });
+});
+
+
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
 });

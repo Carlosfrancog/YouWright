@@ -32,6 +32,26 @@ async function enviar() {
   carregarMensagens();
 }
 
+async function carregarMensagens() {
+  const res = await fetch('/mensagens');
+  const lista = await res.json();
+  const container = document.getElementById('mensagens');
+  container.innerHTML = lista.reverse().map(m => `
+    <div class="msg">
+      <time>${new Date(m.data).toLocaleString()}</time>
+      <p>${m.texto}</p>
+      ${m.userId ? `<small>Usuário #${m.userId}</small><br>` : ''}
+      <button onclick="apagarMensagem('${m.id}')">🗑️ Apagar</button>
+    </div>
+  `).join('');
+}
+
+async function apagarMensagem(id) {
+  if (!confirm('Deseja realmente apagar esta mensagem?')) return;
+  await fetch(`/mensagem/${id}?masterId=${user.id}`, { method: 'DELETE' });
+  carregarMensagens();
+}
+
 document.getElementById('toggleTheme').addEventListener('click', () => {
   document.body.classList.toggle('dark');
 });
