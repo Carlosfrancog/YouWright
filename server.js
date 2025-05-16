@@ -88,10 +88,24 @@ app.post('/mensagem', async (req, res) =>
 });
 
 // Listar todas mensagens
-app.get('/mensagens', async (req, res) => {
-  const snapshot = await db.ref('mensagens').once('value');
-  const mensagens = snapshot.val() || {};
-  res.send(Object.values(mensagens));
+app.post('/mensagem', async (req, res) => {
+  try {
+    const { texto, userId } = req.body;
+    if (!texto || texto.trim() === '') return res.status(400).send({ erro: 'Mensagem vazia.' });
+
+    const mensagensRef = db.ref('mensagens');
+    const nova = {
+      id: Date.now(),
+      texto: texto.slice(0, 280),
+      data: new Date().toISOString(),
+      userId: userId || null
+    };
+    await mensagensRef.child(nova.id).set(nova);
+    res.status(201).send(nova);
+  } catch (err) {
+    console.error('🔥 ERRO AO SALVAR MENSAGEM:', err);
+    res.status(500).send({ erro: 'Erro interno ao salvar mensagem.' });
+  }
 });
 
 // Listar mensagens por usuário
