@@ -16,5 +16,16 @@
     "html": "file:",
     "you": "file:",
     "youwright": "file:"
-  }
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Carlosfrancog/YouWright.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Carlosfrancog/YouWright/issues"
+  },
+  "homepage": "https://github.com/Carlosfrancog/YouWright#readme"
 }

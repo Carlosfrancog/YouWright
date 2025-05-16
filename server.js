@@ -1,13 +1,22 @@
+const path = require('path');
 const express = require('express');
 const admin = require('firebase-admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const serviceAccount = require('/etc/secrets/chave-firebase.json'); // Substitua pelo nome real
+// Detecta se está rodando localmente ou em produção
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Caminho dinâmico da chave Firebase
+const keyPath = isDev
+  ? path.join(__dirname, 'firebase', 'chave-firebase.json') // local
+  : '/etc/secrets/chave-firebase.json'; // produção
+
+const serviceAccount = require(keyPath);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://youwright-7eb4c-default-rtdb.firebaseio.com/" // Substitua pela URL do seu projeto
+  databaseURL: "https://youwright-7eb4c-default-rtdb.firebaseio.com/" // ajuste se necessário
 });
 
 const db = admin.database();
@@ -44,7 +53,26 @@ app.post('/login', async (req, res) => {
 });
 
 // Postagem de mensagem
-app.post('/mensagem', async (req, res) => {
+app.post('/mensagem', async (req, res) => 
+{
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+  const agora = Date.now();
+  const registro = rateLimitMap.get(ip) || { count: 0, timestamp: agora };
+
+  if (agora - registro.timestamp < 15000) {
+    registro.count += 1;
+  } else {
+    registro.count = 1;
+    registro.timestamp = agora;
+  }
+
+  rateLimitMap.set(ip, registro);
+
+  if (registro.count > 5) {
+    return res.status(429).send({ redirect: '/explode.html' });
+  }
+
   const { texto, userId } = req.body;
   if (!texto || texto.trim() === '') return res.status(400).send({ erro: 'Mensagem vazia.' });
 

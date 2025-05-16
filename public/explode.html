@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>💥 Seu dispositivo vai explodir!</title>
+  <style>
+    body {
+      background: black;
+      color: red;
+      font-family: monospace;
+      text-align: center;
+      padding: 50px;
+    }
+    #timer {
+      font-size: 5rem;
+      margin: 30px 0;
+    }
+    img {
+      max-width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚨 ALERTA DE AUTODESTRUIÇÃO</h1>
+  <p>Seu dispositivo foi comprometido por tentativa de spam.</p>
+  <div id="timer">10</div>
+  <p>💣 Redirecionando...</p>
+  <audio id="siren" autoplay loop>
+    <source src="https://www.soundjay.com/misc/sounds/bomb-siren-01.mp3" type="audio/mp3">
+  </audio>
+  <script>
+    let count = 10;
+    const timer = document.getElementById('timer');
+    const interval = setInterval(() => {
+      count--;
+      timer.textContent = count;
+      if (count <= 0) {
+        clearInterval(interval);
+        alert('💥 KABOOM! (brincadeira, mas não seja spameiro!)');
+        window.location.href = '/';
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

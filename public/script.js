@@ -31,18 +31,25 @@ async function apagarMensagem(id) {
 async function enviar() {
   const texto = document.getElementById('texto').value;
   if (!texto.trim()) return alert('Mensagem vazia.');
+
   const body = { texto };
   if (user) body.userId = user.id;
 
-  await fetch('https://youwright.onrender.com/mensagem', {
+  const res = await fetch('https://youwright.onrender.com/mensagem', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
+
+  if (res.status === 429) {
+    const data = await res.json();
+    window.location.href = data.redirect;
+    return;
+  }
+
   document.getElementById('texto').value = '';
   carregarMensagens();
 }
-
 
 document.getElementById('toggleTheme').addEventListener('click', () => {
   document.body.classList.toggle('dark');
