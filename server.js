@@ -1,18 +1,9 @@
-const path = require('path');
 const express = require('express');
 const admin = require('firebase-admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Detecta se está rodando localmente ou em produção
-const isDev = process.env.NODE_ENV !== 'production';
-
-// Caminho dinâmico da chave Firebase
-const keyPath = isDev
-  ? path.join(__dirname, 'firebase', 'chave-firebase.json') // local
-  : '/etc/secrets/chave-firebase.json'; // produção
-
-const serviceAccount = require(keyPath);
+const serviceAccount = require('/etc/secrets/chave-firebase.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -20,12 +11,12 @@ admin.initializeApp({
 });
 
 const db = admin.database();
-const rateLimitMap = new Map(); // ✅ Corrigido: declarei a variável
+const rateLimitMap = new Map(); // 👈 Adicionado para controle de spam
 
 app.use(express.json());
 app.use(express.static('public'));
 
-// Registro
+// Registro de usuário comum
 app.post('/registro', async (req, res) => {
   const { username, senha } = req.body;
   if (!username || !senha) return res.status(400).send({ erro: 'Usuário e senha são obrigatórios.' });
@@ -34,9 +25,8 @@ app.post('/registro', async (req, res) => {
   const snapshot = await usuariosRef.once('value');
   const usuarios = snapshot.val() || {};
 
-  if (Object.values(usuarios).find(u => u.username === username)) {
-    return res.status(409).send({ erro: 'Usuário já existe.' });
-  }
+  const jaExiste = Object.values(usuarios).find(u => u.username === username);
+  if (jaExiste) return res.status(409).send({ erro: 'Usuário já existe.' });
 
   const id = Date.now();
   await usuariosRef.child(id).set({ id, username, senha, role: 'user' });
@@ -54,10 +44,10 @@ app.post('/login', async (req, res) => {
   res.send({ id: user.id, username: user.username, role: user.role });
 });
 
-// Postagem de mensagem
+// Postagem de mensagem + Proteção anti-spam 🚨
 app.post('/mensagem', async (req, res) => {
   try {
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
     const agora = Date.now();
     const registro = rateLimitMap.get(ip) || { count: 0, timestamp: agora };
@@ -72,6 +62,7 @@ app.post('/mensagem', async (req, res) => {
     rateLimitMap.set(ip, registro);
 
     if (registro.count > 5) {
+      console.log(`🚨 IP bloqueado por spam: ${ip}`);
       return res.status(429).send({ redirect: '/explode.html' });
     }
 
@@ -87,10 +78,18 @@ app.post('/mensagem', async (req, res) => {
     };
     await mensagensRef.child(nova.id).set(nova);
     res.status(201).send(nova);
+
   } catch (err) {
     console.error('🔥 ERRO AO SALVAR MENSAGEM:', err);
     res.status(500).send({ erro: 'Erro interno ao salvar mensagem.' });
   }
+});
+
+// Listar todas mensagens
+app.get('/mensagens', async (req, res) => {
+  const snapshot = await db.ref('mensagens').once('value');
+  const mensagens = snapshot.val() || {};
+  res.send(Object.values(mensagens));
 });
 
 // Listar mensagens por usuário
@@ -158,9 +157,10 @@ app.delete('/usuario/:id', async (req, res) => {
   res.send({ status: 'Usuário removido' });
 });
 
-// Apagar mensagem (apenas dev)
+// Apagar uma mensagem (apenas dev)
 app.delete('/mensagem/:id', async (req, res) => {
   const { masterId } = req.query;
+
   const usuariosRef = db.ref('usuarios');
   const snapshotUsuarios = await usuariosRef.once('value');
   const usuarios = snapshotUsuarios.val() || {};
@@ -169,12 +169,8 @@ app.delete('/mensagem/:id', async (req, res) => {
 
   const mensagensRef = db.ref('mensagens');
   await mensagensRef.child(req.params.id).remove();
-  res.send({ status: 'Mensagem removida' });
-});
 
-// Fallback para páginas HTML inexistentes
-app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+  res.send({ status: 'Mensagem removida' });
 });
 
 app.listen(PORT, () => {
