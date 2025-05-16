@@ -16,15 +16,16 @@ const serviceAccount = require(keyPath);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://youwright-7eb4c-default-rtdb.firebaseio.com/" // ajuste se necessário
+  databaseURL: "https://youwright-7eb4c-default-rtdb.firebaseio.com/"
 });
 
 const db = admin.database();
+const rateLimitMap = new Map(); // ✅ Corrigido: declarei a variável
 
 app.use(express.json());
 app.use(express.static('public'));
 
-// Registro de usuário comum
+// Registro
 app.post('/registro', async (req, res) => {
   const { username, senha } = req.body;
   if (!username || !senha) return res.status(400).send({ erro: 'Usuário e senha são obrigatórios.' });
@@ -33,8 +34,9 @@ app.post('/registro', async (req, res) => {
   const snapshot = await usuariosRef.once('value');
   const usuarios = snapshot.val() || {};
 
-  const jaExiste = Object.values(usuarios).find(u => u.username === username);
-  if (jaExiste) return res.status(409).send({ erro: 'Usuário já existe.' });
+  if (Object.values(usuarios).find(u => u.username === username)) {
+    return res.status(409).send({ erro: 'Usuário já existe.' });
+  }
 
   const id = Date.now();
   await usuariosRef.child(id).set({ id, username, senha, role: 'user' });
@@ -53,43 +55,26 @@ app.post('/login', async (req, res) => {
 });
 
 // Postagem de mensagem
-app.post('/mensagem', async (req, res) => 
-{
-    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-  const agora = Date.now();
-  const registro = rateLimitMap.get(ip) || { count: 0, timestamp: agora };
-
-  if (agora - registro.timestamp < 15000) {
-    registro.count += 1;
-  } else {
-    registro.count = 1;
-    registro.timestamp = agora;
-  }
-
-  rateLimitMap.set(ip, registro);
-
-  if (registro.count > 5) {
-    return res.status(429).send({ redirect: '/explode.html' });
-  }
-
-  const { texto, userId } = req.body;
-  if (!texto || texto.trim() === '') return res.status(400).send({ erro: 'Mensagem vazia.' });
-
-  const mensagensRef = db.ref('mensagens');
-  const nova = {
-    id: Date.now(),
-    texto: texto.slice(0, 280),
-    data: new Date().toISOString(),
-    userId: userId || null
-  };
-  await mensagensRef.child(nova.id).set(nova);
-  res.status(201).send(nova);
-});
-
-// Listar todas mensagens
 app.post('/mensagem', async (req, res) => {
   try {
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+    const agora = Date.now();
+    const registro = rateLimitMap.get(ip) || { count: 0, timestamp: agora };
+
+    if (agora - registro.timestamp < 15000) {
+      registro.count += 1;
+    } else {
+      registro.count = 1;
+      registro.timestamp = agora;
+    }
+
+    rateLimitMap.set(ip, registro);
+
+    if (registro.count > 5) {
+      return res.status(429).send({ redirect: '/explode.html' });
+    }
+
     const { texto, userId } = req.body;
     if (!texto || texto.trim() === '') return res.status(400).send({ erro: 'Mensagem vazia.' });
 
@@ -173,10 +158,9 @@ app.delete('/usuario/:id', async (req, res) => {
   res.send({ status: 'Usuário removido' });
 });
 
-// Apagar uma mensagem (apenas dev)
+// Apagar mensagem (apenas dev)
 app.delete('/mensagem/:id', async (req, res) => {
   const { masterId } = req.query;
-
   const usuariosRef = db.ref('usuarios');
   const snapshotUsuarios = await usuariosRef.once('value');
   const usuarios = snapshotUsuarios.val() || {};
@@ -185,10 +169,13 @@ app.delete('/mensagem/:id', async (req, res) => {
 
   const mensagensRef = db.ref('mensagens');
   await mensagensRef.child(req.params.id).remove();
-
   res.send({ status: 'Mensagem removida' });
 });
 
+// Fallback para páginas HTML inexistentes
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
 
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
